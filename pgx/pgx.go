@@ -8,16 +8,17 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
-	"os/exec"
-	"regexp"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
 	"zgo.at/zdb"
 	"zgo.at/zdb/drivers"
+	"zgo.at/zstd/zcrypto"
 )
 
 func init() {
@@ -32,12 +33,21 @@ func (driver) ErrUnique(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
-func (driver) Connect(ctx context.Context, connect string, create bool) (*sql.DB, bool, error) {
-	exists := true
-	db, err := sql.Open("pgx", connect)
+func (d driver) Connect(ctx context.Context, connect string, create bool) (*sql.DB, any, error) {
+	_, schema := getSearchPath(connect)
+	cfg, err := pgxpool.ParseConfig(connect)
 	if err != nil {
-		return nil, false, fmt.Errorf("pgx.Connect: %w", err)
+		return nil, nil, fmt.Errorf("pgx.Connect: %w", err)
 	}
+
+	if schema != "" {
+		cfg.ConnConfig.RuntimeParams["search_path"] = `"` + schema + `"`
+	}
+	pool, err := pgxpool.NewWithConfig(context.Background(), cfg)
+	if err != nil {
+		return nil, nil, fmt.Errorf("pgx.Connect: %w", err)
+	}
+	db := stdlib.OpenDBFromPool(pool)
 
 	err = db.PingContext(ctx)
 	if err != nil {
@@ -46,36 +56,40 @@ func (driver) Connect(ctx context.Context, connect string, create bool) (*sql.DB
 			pgErr  *pgconn.PgError
 		)
 		if errors.As(err, &pgErr) && pgErr.Code == "3D000" {
-			// TODO: we can parse the connection string with pgx now to get the
-			// database name.
-			x := regexp.MustCompile(`database "(.+?)" does not exist`).FindStringSubmatch(pgErr.Error())
-			if len(x) >= 2 {
-				dbname = x[1]
-				exists = true
-			}
+			dbname = cfg.ConnConfig.Database
 		}
 
 		if create && dbname != "" {
-			out, cerr := exec.Command("createdb", dbname).CombinedOutput()
-			if cerr != nil {
-				return nil, false, fmt.Errorf("pgx.Connect: %w: %s", cerr, out)
-			}
-
-			db, err = sql.Open("pgx", connect)
+			cfg.ConnConfig.Database = "postgres"
+			pool, err := pgxpool.NewWithConfig(context.Background(), cfg)
 			if err != nil {
-				return nil, false, fmt.Errorf("pgx.Connect: %w", err)
+				return nil, nil, fmt.Errorf("pgx.Connect: %w", err)
 			}
+			defer pool.Close()
+			_, err = pool.Exec(ctx, `create database `+dbname)
+			if err != nil {
+				return nil, nil, fmt.Errorf("pgx.Connect: %w", err)
+			}
+			pool.Close()
 
-			return db, false, nil
+			// Restart the function with "create" to false to avoid loops.
+			return d.Connect(ctx, connect, false)
 		}
 
 		if dbname != "" {
-			return nil, false, &drivers.NotExistError{Driver: "postgres", DB: dbname, Connect: connect}
+			return nil, nil, &drivers.NotExistError{Driver: "postgres", DB: dbname, Connect: connect}
 		}
-		return nil, false, fmt.Errorf("pgx.Connect: %w", err)
+		return nil, nil, fmt.Errorf("pgx.Connect: %w", err)
 	}
 
-	return db, exists, nil
+	if schema != "" {
+		_, err = db.ExecContext(ctx, `create schema if not exists "`+schema+`"`)
+		if err != nil {
+			return nil, nil, fmt.Errorf("pgx.Connect: %w", err)
+		}
+	}
+
+	return db, pool, nil
 }
 
 // StartTest starts a new test.
@@ -87,6 +101,9 @@ func (driver) StartTest(t *testing.T, opt *drivers.TestOptions) context.Context 
 	if e := os.Getenv("PGDATABASE"); e == "" {
 		os.Setenv("PGDATABASE", "zdb_test")
 	}
+	if opt == nil {
+		opt = &drivers.TestOptions{}
+	}
 
 	copt := zdb.ConnectOptions{Connect: "postgresql+", Create: true}
 	if opt != nil && opt.Connect != "" {
@@ -95,35 +112,59 @@ func (driver) StartTest(t *testing.T, opt *drivers.TestOptions) context.Context 
 	if opt != nil && opt.Files != nil {
 		copt.Files = opt.Files
 	}
+	if opt != nil && opt.GoMigrations != nil {
+		copt.GoMigrations = opt.GoMigrations
+	}
+
+	schema := fmt.Sprintf(`zdb_test_%s_%s`, time.Now().Format("20060102T15:04:05.9999"),
+		zcrypto.SecretString(4, ""))
+	copt.Connect = withSearchPath(copt.Connect, schema)
 	db, err := zdb.Connect(context.Background(), copt)
 	if err != nil {
 		t.Fatalf("pgx.StartTest: connecting to %q: %s", copt.Connect, err)
 	}
 
-	// The first test will create the zdb_test database, and every test after
-	// that runs in its own schema.
-	schema := fmt.Sprintf(`"zdb_test_%s"`, time.Now().Format("20060102T15:04:05.9999"))
-	err = db.Exec(context.Background(), `create schema `+schema)
-	if err != nil {
-		t.Fatalf("pgx.StartTest: creating schema %s: %s", schema, err)
-	}
-	err = db.Exec(context.Background(), "set search_path to "+schema)
-	if err != nil {
-		t.Fatalf("pgx.StartTest: setting search_path to %s: %s", schema, err)
-	}
-
-	// No easy way to copy the public schema, so just run the create again.
-	// TODO: migrate, too?
-	if copt.Files != nil {
-		err = zdb.Create(db, copt.Files)
-		if err != nil {
-			t.Fatalf("pgx.StartTest: creating database in schema %s: %s", schema, err)
-		}
-	}
-
 	t.Cleanup(func() {
-		db.Exec(context.Background(), "drop schema "+schema+" cascade")
+		db.Exec(context.Background(), `drop schema "`+schema+`" cascade`)
 		db.Close()
+
+		// TODO: Just closing the sql.DB isn't enough, as that won't close all
+		// the connections made from pgxpool.Pool. Need to explicitly close
+		// both.
+		//
+		// This should really be done on db.Close() for everything, but not so
+		// easy to wrap that as sql.DB is a struct rather than interface. Would
+		// probably be best to send a patch to pgx to add option or something.
+		// Need to look into it properly.
+		//
+		// However, in "real applications" it's usually not a big deal as
+		// connections as only closed on application exit (that is: basically
+		// never). So for now, it's an okay hack to just do this for tests.
+		zdb.DriverConnection(db).(*pgxpool.Pool).Close()
 	})
 	return zdb.WithDB(context.Background(), db)
+}
+
+func withSearchPath(s, p string) string {
+	u, err := url.Parse(s)
+	if err != nil {
+		panic(err)
+	}
+	q := u.Query()
+	q.Set("search_path", p)
+	u.RawQuery = q.Encode()
+	return u.String()
+}
+
+func getSearchPath(s string) (string, string) {
+	u, err := url.Parse(s)
+	if err != nil {
+		panic(err)
+	}
+
+	q := u.Query()
+	p := q.Get("search_path")
+	q.Del("search_path")
+	u.RawQuery = q.Encode()
+	return u.String(), p
 }

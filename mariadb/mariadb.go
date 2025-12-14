@@ -1,10 +1,10 @@
-// Package mysql provides a zdb driver for MariaDB.
+// Package mariadb provides a zdb driver for MariaDB.
 //
 // This uses https://github.com/go-sql-driver/mysql
 //
 // Only "sql_mode=ansi" is supported. This means that identifiers have to be
 // quoted with a " instead of a `. This is set automatically.
-package mysql
+package mariadb
 
 import (
 	"context"
@@ -35,20 +35,20 @@ func (driver) ErrUnique(err error) bool {
 	}
 	return false
 }
-func (driver) Connect(ctx context.Context, connect string, create bool) (*sql.DB, bool, error) {
+func (driver) Connect(ctx context.Context, connect string, create bool) (*sql.DB, any, error) {
 	// TODO: pass these better; can't just use "set sql_mode because of
 	// connection pooling, and should allow overriding parseTime like SQLite
 	db, err := sql.Open("mysql", connect+"?sql_mode=concat(@@sql_mode, ',ansi')&parseTime=true")
 	if err != nil {
-		return nil, false, fmt.Errorf("mariadb.Connect: %w", err)
+		return nil, nil, fmt.Errorf("mariadb.Connect: %w", err)
 	}
 
 	err = db.PingContext(ctx)
 	if err != nil {
-		return nil, false, fmt.Errorf("mariadb.Connect: %w", err)
+		return nil, nil, fmt.Errorf("mariadb.Connect: %w", err)
 	}
 
-	return db, true, nil
+	return db, nil, nil
 }
 
 // TODO: needs to be improved.
@@ -56,6 +56,9 @@ func (driver) StartTest(t *testing.T, opt *drivers.TestOptions) context.Context 
 	t.Helper()
 
 	dbname := "zdb_test_" + zcrypto.SecretString(10, "")
+	if opt == nil {
+		opt = &drivers.TestOptions{}
+	}
 
 	copt := zdb.ConnectOptions{Connect: "mysql+root@unix(/var/run/mysqld/mysqld.sock)/" + dbname, Create: true}
 	if opt != nil && opt.Connect != "" {
@@ -63,6 +66,9 @@ func (driver) StartTest(t *testing.T, opt *drivers.TestOptions) context.Context 
 	}
 	if opt != nil && opt.Files != nil {
 		copt.Files = opt.Files
+	}
+	if opt != nil && opt.GoMigrations != nil {
+		copt.GoMigrations = opt.GoMigrations
 	}
 
 	err := createdb(dbname)

@@ -21,15 +21,14 @@ func (driver) ErrUnique(err error) bool {
 	return errors.As(err, &sqlErr) && sqlErr.ExtendedCode == sqlite3.ErrConstraintUnique
 }
 
-func (driver) Connect(ctx context.Context, connect string, create bool) (*sql.DB, bool, error) {
+func (driver) Connect(ctx context.Context, connect string, create bool) (*sql.DB, any, error) {
 	connect, driver, _ := strings.Cut(connect, "+++")
 	if driver == "" {
 		driver = "sqlite3"
 	}
 
 	if driver == "sqlite3" && defHook != nil {
-		suffix := "_zdb_" + fmt.Sprintf("%p\n", defHook)[2:]
-		driver += suffix
+		driver += "_zdb_" + fmt.Sprintf("%p", defHook)[2:]
 
 		found := false
 		for _, d := range sql.Drivers() {
@@ -44,7 +43,6 @@ func (driver) Connect(ctx context.Context, connect string, create bool) (*sql.DB
 	}
 
 	memory := strings.HasPrefix(connect, ":memory:")
-	exists := !memory
 	file := strings.TrimPrefix(connect, "file:")
 
 	var (
@@ -56,7 +54,7 @@ func (driver) Connect(ctx context.Context, connect string, create bool) (*sql.DB
 		file = connect[:i]
 		q, err = url.ParseQuery(connect[i+1:])
 		if err != nil {
-			return nil, false, fmt.Errorf("sqlite3.Connect: parse connection string: %w", err)
+			return nil, nil, fmt.Errorf("sqlite3.Connect: parse connection string: %w", err)
 		}
 	}
 
@@ -81,41 +79,42 @@ func (driver) Connect(ctx context.Context, connect string, create bool) (*sql.DB
 	connect = fmt.Sprintf("file:%s?%s", file, q.Encode())
 
 	if !memory {
-		_, err = os.Stat(file)
+		_, err := os.Stat(file)
 		if err != nil && !os.IsNotExist(err) {
-			return nil, false, fmt.Errorf("sqlite3.Connect: %w", err)
+			return nil, nil, fmt.Errorf("sqlite3.Connect: %w", err)
 		}
 
 		if os.IsNotExist(err) {
-			exists = false
 			if !create {
 				if abs, err := filepath.Abs(file); err == nil {
 					file = abs
 				}
-				return nil, false, &drivers.NotExistError{Driver: "sqlite3", DB: file, Connect: connect}
+				return nil, nil, &drivers.NotExistError{Driver: "sqlite3", DB: file, Connect: connect}
 			}
 
-			err = os.MkdirAll(filepath.Dir(file), 0755)
+			dir := filepath.Dir(file)
+			err = os.MkdirAll(dir, 0755)
 			if err != nil {
-				return nil, false, fmt.Errorf("sqlite3.Connect: create DB dir: %w", err)
+				return nil, nil, fmt.Errorf("sqlite3.Connect: create DB dir: %w", err)
 			}
+
+			// Make sure the directory is writable.
+			fp, err := os.CreateTemp(dir, "zdb-write-test-*")
+			if err != nil {
+				return nil, nil, fmt.Errorf("sqlite3.Connect: DB dir not writeable: %w", err)
+			}
+			fp.Close()
+			os.Remove(fp.Name())
 		}
 	}
 
-	// TODO: if the file doesn't exist yet stat is nil, need to change this to
-	// take a file path so we can check permission of the directory.
-	// ok, err := zos.Writable(stat)
-	// if err != nil {
-	// 	return nil, false, fmt.Errorf("connectSQLite: %w", err)
-	// }
-	// if !ok {
-	// 	return nil, false, fmt.Errorf("connectSQLite: %q is not writable", connect)
-	// }
-
 	db, err := sql.Open(driver, connect)
 	if err != nil {
-		return nil, false, fmt.Errorf("sqlite3.Connect: %w", err)
+		return nil, nil, fmt.Errorf("sqlite3.Connect: %w", err)
 	}
-
-	return db, exists, nil
+	err = db.Ping()
+	if err != nil {
+		return nil, nil, fmt.Errorf("sqlite3.Connect: %w", err)
+	}
+	return db, nil, nil
 }

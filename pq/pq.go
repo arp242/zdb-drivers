@@ -17,6 +17,7 @@ import (
 	"github.com/lib/pq"
 	"zgo.at/zdb"
 	"zgo.at/zdb/drivers"
+	"zgo.at/zstd/zcrypto"
 )
 
 func init() {
@@ -31,11 +32,10 @@ func (driver) ErrUnique(err error) bool {
 	var pqErr *pq.Error
 	return errors.As(err, &pqErr) && pqErr.Code == "23505"
 }
-func (driver) Connect(ctx context.Context, connect string, create bool) (*sql.DB, bool, error) {
-	exists := true
+func (d driver) Connect(ctx context.Context, connect string, create bool) (*sql.DB, any, error) {
 	db, err := sql.Open("postgres", connect)
 	if err != nil {
-		return nil, false, fmt.Errorf("pq.Connect: %w", err)
+		return nil, nil, fmt.Errorf("pq.Connect: %w", err)
 	}
 
 	err = db.PingContext(ctx)
@@ -50,31 +50,26 @@ func (driver) Connect(ctx context.Context, connect string, create bool) (*sql.DB
 			x := regexp.MustCompile(`pq: database "(.+?)" does not exist`).FindStringSubmatch(pqErr.Error())
 			if len(x) >= 2 {
 				dbname = x[1]
-				exists = true
 			}
 		}
 
 		if create && dbname != "" {
 			out, cerr := exec.Command("createdb", dbname).CombinedOutput()
 			if cerr != nil {
-				return nil, false, fmt.Errorf("pq.Connect: %w: %s", cerr, out)
+				return nil, nil, fmt.Errorf("pq.Connect: %w: %s", cerr, out)
 			}
 
-			db, err = sql.Open("postgres", connect)
-			if err != nil {
-				return nil, false, fmt.Errorf("pq.Connect: %w", err)
-			}
-
-			return db, false, nil
+			// Restart the function with "create" to false to avoid loops.
+			return d.Connect(ctx, connect, false)
 		}
 
 		if dbname != "" {
-			return nil, false, &drivers.NotExistError{Driver: "postgres", DB: dbname, Connect: connect}
+			return nil, nil, &drivers.NotExistError{Driver: "postgres", DB: dbname, Connect: connect}
 		}
-		return nil, false, fmt.Errorf("pq.Connect: %w", err)
+		return nil, nil, fmt.Errorf("pq.Connect: %w", err)
 	}
 
-	return db, exists, nil
+	return db, nil, nil
 }
 
 // StartTest starts a new test.
@@ -86,6 +81,9 @@ func (driver) StartTest(t *testing.T, opt *drivers.TestOptions) context.Context 
 	if e := os.Getenv("PGDATABASE"); e == "" {
 		os.Setenv("PGDATABASE", "zdb_test")
 	}
+	if opt == nil {
+		opt = &drivers.TestOptions{}
+	}
 
 	copt := zdb.ConnectOptions{Connect: "postgresql+", Create: true}
 	if opt != nil && opt.Connect != "" {
@@ -94,6 +92,10 @@ func (driver) StartTest(t *testing.T, opt *drivers.TestOptions) context.Context 
 	if opt != nil && opt.Files != nil {
 		copt.Files = opt.Files
 	}
+	if opt != nil && opt.GoMigrations != nil {
+		copt.GoMigrations = opt.GoMigrations
+	}
+
 	db, err := zdb.Connect(context.Background(), copt)
 	if err != nil {
 		t.Fatalf("pq.StartTest: connecting to %q: %s", copt.Connect, err)
@@ -101,7 +103,8 @@ func (driver) StartTest(t *testing.T, opt *drivers.TestOptions) context.Context 
 
 	// The first test will create the zdb_test database, and every test after
 	// that runs in its own schema.
-	schema := fmt.Sprintf(`"zdb_test_%s"`, time.Now().Format("20060102T15:04:05.9999"))
+	schema := fmt.Sprintf(`"zdb_test_%s_%s"`, time.Now().Format("20060102T15:04:05.9999"),
+		zcrypto.SecretString(4, ""))
 	err = db.Exec(context.Background(), `create schema `+schema)
 	if err != nil {
 		t.Fatalf("pq.StartTest: creating schema %s: %s", schema, err)

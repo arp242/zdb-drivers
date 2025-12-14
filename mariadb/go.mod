@@ -1,4 +1,4 @@
-module zgo.at/zdb-drivers/mysql
+module zgo.at/zdb-drivers/mariadb
 
 go 1.25
 

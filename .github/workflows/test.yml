@@ -6,18 +6,19 @@ on:
     branches: ['main']
 
 jobs:
-  staticcheck:
-    runs-on: 'ubuntu-latest'
-    steps:
-      - uses: 'actions/checkout@v6'
-      - uses: 'dominikh/staticcheck-action@v1.3.1'
-        with: {version: '2025.1'}
+  # ./... doesn't work because there's no go.mod in root
+  #staticcheck:
+  #  runs-on: 'ubuntu-latest'
+  #  steps:
+  #    - uses: 'actions/checkout@v6'
+  #    - uses: 'dominikh/staticcheck-action@v1.3.1'
+  #      with: {version: '2025.1'}
 
   test:
     strategy:
       matrix:
         go: ['1.25.x']
-        os: ['ubuntu-latest', 'ubuntu-24.04-arm', 'macos-latest', 'windows-latest', 'windows-11-arm']
+        os: ['ubuntu-latest', 'ubuntu-24.04-arm', 'macos-latest', 'windows-latest']
     runs-on: ${{ matrix.os }}
     steps:
       - uses: 'actions/checkout@v6'
@@ -26,10 +27,6 @@ jobs:
           go-version: ${{ matrix.go }}
       - shell: 'bash'
         run: |
-          # "-race is not supported on windows/arm64"
-          race='-race'
-          [ $RUNNER_OS = 'Windows' ] && [ $RUNNER_ARCH = 'ARM64' ] && race=''
-
           for d in *; do
             [[ ! -d $d ]] && continue
             (

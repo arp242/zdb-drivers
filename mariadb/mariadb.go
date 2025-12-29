@@ -52,7 +52,7 @@ func (driver) Connect(ctx context.Context, connect string, create bool) (*sql.DB
 }
 
 // TODO: needs to be improved.
-func (driver) StartTest(t *testing.T, opt *drivers.TestOptions) context.Context {
+func (driver) StartTest(t testing.TB, opt *drivers.TestOptions) context.Context {
 	t.Helper()
 
 	dbname := "zdb_test_" + zcrypto.SecretString(10, "")

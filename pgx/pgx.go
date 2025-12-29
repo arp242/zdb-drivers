@@ -95,7 +95,7 @@ func (d driver) Connect(ctx context.Context, connect string, create bool) (*sql.
 // StartTest starts a new test.
 //
 // TODO: document.
-func (driver) StartTest(t *testing.T, opt *drivers.TestOptions) context.Context {
+func (driver) StartTest(t testing.TB, opt *drivers.TestOptions) context.Context {
 	t.Helper()
 
 	if e := os.Getenv("PGDATABASE"); e == "" {

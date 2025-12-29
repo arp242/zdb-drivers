@@ -74,7 +74,7 @@ func (driver) Match(dialect, driver string) bool {
 	return dialect == "sqlite3" || strings.HasPrefix(driver, "sqlite3")
 }
 
-func (driver) StartTest(t *testing.T, opt *drivers.TestOptions) context.Context {
+func (driver) StartTest(t testing.TB, opt *drivers.TestOptions) context.Context {
 	t.Helper()
 
 	if opt == nil {

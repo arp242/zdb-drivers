@@ -92,6 +92,19 @@ func (d driver) Connect(ctx context.Context, connect string, create bool) (*sql.
 	return db, pool, nil
 }
 
+func pgURL(cfg *pgconn.Config) string {
+	u := url.URL{}
+	u.Scheme = "postgres"
+	u.User = url.UserPassword(cfg.User, cfg.Password)
+	u.Host = fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
+	u.Path = cfg.Database
+	if cfg.TLSConfig == nil {
+		u.Query().Set("sslmode", "disable")
+	}
+	return u.String()
+
+}
+
 // StartTest starts a new test.
 //
 // TODO: document.
@@ -108,7 +121,16 @@ func (driver) StartTest(t testing.TB, opt *drivers.TestOptions) context.Context 
 	copt := zdb.ConnectOptions{Connect: "postgresql+", Create: true}
 	if opt != nil && opt.Connect != "" {
 		copt.Connect = opt.Connect
+	} else {
+		cfg, err := pgconn.ParseConfig(copt.Connect[11:])
+		if err != nil {
+			t.Fatal(err)
+		}
+		// If we take the connection from the environment the string will be
+		// "?search_path=..", which will fail. So explicitly read/set it.
+		copt.Connect = "postgres+" + pgURL(cfg)
 	}
+
 	if opt != nil && opt.Files != nil {
 		copt.Files = opt.Files
 	}

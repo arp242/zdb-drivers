@@ -4,8 +4,8 @@ go 1.25
 
 require (
 	github.com/jackc/pgx/v5 v5.8.0
-	zgo.at/zdb v0.0.0-20251229200430-f9358a291e07
-	zgo.at/zstd v0.0.0-20251128053228-ec259dea6715
+	zgo.at/zdb v0.0.0-20251231144927-8875464050e8
+	zgo.at/zstd v0.0.0-20260108115308-04b7db162be2
 )
 
 require (

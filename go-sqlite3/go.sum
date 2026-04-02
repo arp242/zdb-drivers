@@ -1,6 +1,6 @@
-github.com/mattn/go-sqlite3 v1.14.34 h1:3NtcvcUnFBPsuRcno8pUtupspG/GM+9nZ88zgJcp6Zk=
-github.com/mattn/go-sqlite3 v1.14.34/go.mod h1:Uh1q+B4BYcTPb+yiD3kU8Ct7aC0hY9fxUwlHK0RXw+Y=
-zgo.at/zdb v0.0.0-20260224134437-9b2b27f2fb77 h1:WijVsG4IiYcBsoPv8iQwRXWFeFr6AM1nWRP80GEit0I=
-zgo.at/zdb v0.0.0-20260224134437-9b2b27f2fb77/go.mod h1:Rh4mlrMV0iqNGwfXS7Q7O/ohUp2fcygBvovW4X4V6TM=
+github.com/mattn/go-sqlite3 v1.14.38 h1:tDUzL85kMvOrvpCt8P64SbGgVFtJB11GPi2AdmITgb4=
+github.com/mattn/go-sqlite3 v1.14.38/go.mod h1:Uh1q+B4BYcTPb+yiD3kU8Ct7aC0hY9fxUwlHK0RXw+Y=
+zgo.at/zdb v0.0.0-20260303161845-562342f5f7f5 h1:bV+md9+jv3vxQXRJbOGPrUoAn7o27IGOTaDEAa39DJQ=
+zgo.at/zdb v0.0.0-20260303161845-562342f5f7f5/go.mod h1:PsM3LYL4QN2Eq6IIC3/uqIGmYsPnN0kqvlz7BqnUJ+g=
 zgo.at/zstd v0.0.0-20260223143114-826b370d029b h1:FtG55RY9FOrx1TYX4+b2dn5A8S4ayrBkCirGaQtLbaI=
 zgo.at/zstd v0.0.0-20260223143114-826b370d029b/go.mod h1:5vR5jYems3c7xfd8nHny5qMh67gbZwl8IockSF4pDSI=

@@ -1,5 +1,5 @@
-github.com/mattn/go-sqlite3 v1.14.38 h1:tDUzL85kMvOrvpCt8P64SbGgVFtJB11GPi2AdmITgb4=
-github.com/mattn/go-sqlite3 v1.14.38/go.mod h1:Uh1q+B4BYcTPb+yiD3kU8Ct7aC0hY9fxUwlHK0RXw+Y=
+github.com/mattn/go-sqlite3 v1.14.42 h1:MigqEP4ZmHw3aIdIT7T+9TLa90Z6smwcthx+Azv4Cgo=
+github.com/mattn/go-sqlite3 v1.14.42/go.mod h1:pjEuOr8IwzLJP2MfGeTb0A35jauH+C2kbHKBr7yXKVQ=
 zgo.at/zdb v0.0.0-20260303161845-562342f5f7f5 h1:bV+md9+jv3vxQXRJbOGPrUoAn7o27IGOTaDEAa39DJQ=
 zgo.at/zdb v0.0.0-20260303161845-562342f5f7f5/go.mod h1:PsM3LYL4QN2Eq6IIC3/uqIGmYsPnN0kqvlz7BqnUJ+g=
 zgo.at/zstd v0.0.0-20260223143114-826b370d029b h1:FtG55RY9FOrx1TYX4+b2dn5A8S4ayrBkCirGaQtLbaI=

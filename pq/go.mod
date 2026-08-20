@@ -1,9 +1,9 @@
 module zgo.at/zdb-drivers/pq
 
-go 1.25
+go 1.26
 
 require (
 	github.com/lib/pq v1.12.3
-	zgo.at/zdb v0.0.0-20260303161845-562342f5f7f5
-	zgo.at/zstd v0.0.0-20260423150213-85e323702691
+	zgo.at/zdb v0.0.0-20260425145215-e580739daf43
+	zgo.at/zstd v0.0.0-20260819203842-7567984d0ee9
 )

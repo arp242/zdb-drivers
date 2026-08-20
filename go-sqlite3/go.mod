@@ -1,10 +1,10 @@
 module zgo.at/zdb-drivers/go-sqlite3
 
-go 1.25
+go 1.26
 
 require (
-	github.com/mattn/go-sqlite3 v1.14.42
-	zgo.at/zdb v0.0.0-20260303161845-562342f5f7f5
+	github.com/mattn/go-sqlite3 v1.14.50
+	zgo.at/zdb v0.0.0-20260425145215-e580739daf43
 )
 
-require zgo.at/zstd v0.0.0-20260223143114-826b370d029b // indirect
+require zgo.at/zstd v0.0.0-20260423150213-85e323702691 // indirect

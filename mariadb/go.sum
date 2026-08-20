@@ -1,8 +1,8 @@
 filippo.io/edwards25519 v1.2.0 h1:crnVqOiS4jqYleHd9vaKZ+HKtHfllngJIiOpNpoJsjo=
 filippo.io/edwards25519 v1.2.0/go.mod h1:xzAOLCNug/yB62zG1bQ8uziwrIqIuxhctzJT18Q77mc=
-github.com/go-sql-driver/mysql v1.9.3 h1:U/N249h2WzJ3Ukj8SowVFjdtZKfu9vlLZxjPXV1aweo=
-github.com/go-sql-driver/mysql v1.9.3/go.mod h1:qn46aNg1333BRMNU69Lq93t8du/dwxI64Gl8i5p1WMU=
-zgo.at/zdb v0.0.0-20260303161845-562342f5f7f5 h1:bV+md9+jv3vxQXRJbOGPrUoAn7o27IGOTaDEAa39DJQ=
-zgo.at/zdb v0.0.0-20260303161845-562342f5f7f5/go.mod h1:PsM3LYL4QN2Eq6IIC3/uqIGmYsPnN0kqvlz7BqnUJ+g=
-zgo.at/zstd v0.0.0-20260223143114-826b370d029b h1:FtG55RY9FOrx1TYX4+b2dn5A8S4ayrBkCirGaQtLbaI=
-zgo.at/zstd v0.0.0-20260223143114-826b370d029b/go.mod h1:5vR5jYems3c7xfd8nHny5qMh67gbZwl8IockSF4pDSI=
+github.com/go-sql-driver/mysql v1.10.0 h1:Q+1LV8DkHJvSYAdR83XzuhDaTykuDx0l6fkXxoWCWfw=
+github.com/go-sql-driver/mysql v1.10.0/go.mod h1:M+cqaI7+xxXGG9swrdeUIoPG3Y3KCkF0pZej+SK+nWk=
+zgo.at/zdb v0.0.0-20260425145215-e580739daf43 h1:jYOTj8yUgmL9s5I1vw0RbwOb+sGXV/eJ2rW9jvLjDhU=
+zgo.at/zdb v0.0.0-20260425145215-e580739daf43/go.mod h1:lWKRy+R/LR4K3UTZmrxuk70Z73KSmhqaEitw3+60mQc=
+zgo.at/zstd v0.0.0-20260819203842-7567984d0ee9 h1:oaWpzu6FII4jAo/2lxvbAcVFcrJmxmOiGaKYeAikAdw=
+zgo.at/zstd v0.0.0-20260819203842-7567984d0ee9/go.mod h1:5vR5jYems3c7xfd8nHny5qMh67gbZwl8IockSF4pDSI=

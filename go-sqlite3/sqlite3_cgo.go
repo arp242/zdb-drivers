@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/mattn/go-sqlite3"
@@ -30,13 +31,7 @@ func (driver) Connect(ctx context.Context, connect string, create bool) (*sql.DB
 	if driver == "sqlite3" && defHook != nil {
 		driver += "_zdb_" + fmt.Sprintf("%p", defHook)[2:]
 
-		found := false
-		for _, d := range sql.Drivers() {
-			if d == driver {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(sql.Drivers(), driver)
 		if !found {
 			sql.Register(driver, &sqlite3.SQLiteDriver{ConnectHook: defHook})
 		}

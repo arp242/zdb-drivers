@@ -29,8 +29,7 @@ type driver struct{}
 func (driver) Name() string    { return "mysql" }
 func (driver) Dialect() string { return "mariadb" }
 func (driver) ErrUnique(err error) bool {
-	var mErr *mysql.MySQLError
-	if errors.As(err, &mErr) {
+	if mErr, ok := errors.AsType[*mysql.MySQLError](err); ok {
 		return mErr.Number == 1062
 	}
 	return false

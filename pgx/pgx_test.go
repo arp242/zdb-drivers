@@ -43,7 +43,7 @@ func TestSearchPath(t *testing.T) {
 		ch = make(chan string, 20)
 	)
 	wg.Add(20)
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		go func(i int) {
 			defer wg.Done()
 			var s string
@@ -61,7 +61,7 @@ func TestSearchPath(t *testing.T) {
 	wg.Wait()
 
 	prev := <-ch
-	for i := 0; i < 19; i++ {
+	for range 19 {
 		cur := <-ch
 		if cur != prev {
 			t.Fatalf("\nschema changed from:\n\t%s\nto:\n\t%s", prev, cur)

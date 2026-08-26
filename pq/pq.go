@@ -6,18 +6,18 @@ package pq
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
+	"io/fs"
 	"os"
-	"os/exec"
-	"regexp"
 	"testing"
 	"time"
 
 	"github.com/lib/pq"
+	"github.com/lib/pq/pqerror"
 	"zgo.at/zdb"
 	"zgo.at/zdb/drivers"
 	"zgo.at/zstd/zcrypto"
+	"zgo.at/zstd/zfs"
 )
 
 func init() {
@@ -26,55 +26,51 @@ func init() {
 
 type driver struct{}
 
-func (driver) Name() string    { return "pq" }
-func (driver) Dialect() string { return "postgresql" }
-func (driver) ErrUnique(err error) bool {
-	var pqErr *pq.Error
-	return errors.As(err, &pqErr) && pqErr.Code == "23505"
-}
-func (d driver) Connect(ctx context.Context, connect string, create bool) (*sql.DB, any, error) {
-	db, err := sql.Open("postgres", connect)
+func (driver) Name() string             { return "pq" }
+func (driver) Dialect() string          { return "postgresql" }
+func (driver) ErrUnique(err error) bool { return pq.As(err, pqerror.UniqueViolation) != nil }
+func (d driver) Connect(ctx context.Context, dsn string, create bool) (*sql.DB, any, error) {
+	cfg, err := pq.NewConfig(dsn)
 	if err != nil {
-		return nil, nil, fmt.Errorf("pq.Connect: %w", err)
+		return nil, nil, fmt.Errorf("zdb-pq.Connect: %w", err)
+	}
+	conn, err := pq.NewConnectorConfig(cfg)
+	if err != nil {
+		return nil, nil, fmt.Errorf("zdb-pq.Connect: %w", err)
 	}
 
+	db := sql.OpenDB(conn)
 	err = db.PingContext(ctx)
-	if err != nil {
-		var (
-			dbname string
-			pqErr  *pq.Error
-		)
-		if errors.As(err, &pqErr) && pqErr.Code == "3D000" {
-			// TODO: rather ugly way to get database name, but pq doesn't expose
-			// any way to parse the connection string.
-			x := regexp.MustCompile(`pq: database "(.+?)" does not exist`).FindStringSubmatch(pqErr.Error())
-			if len(x) >= 2 {
-				dbname = x[1]
-			}
+	if err != nil && !create {
+		if cfg.Database != "" {
+			return nil, nil, &drivers.NotExistError{Driver: "postgres", DB: cfg.Database, Connect: dsn}
 		}
-
-		if create && dbname != "" {
-			out, cerr := exec.Command("createdb", dbname).CombinedOutput()
-			if cerr != nil {
-				return nil, nil, fmt.Errorf("pq.Connect: %w: %s", cerr, out)
-			}
-
-			// Restart the function with "create" to false to avoid loops.
-			return d.Connect(ctx, connect, false)
-		}
-
-		if dbname != "" {
-			return nil, nil, &drivers.NotExistError{Driver: "postgres", DB: dbname, Connect: connect}
-		}
-		return nil, nil, fmt.Errorf("pq.Connect: %w", err)
+		return nil, nil, fmt.Errorf("zdb-pq.Connect: %w", err)
 	}
-
+	if err != nil {
+		dbname := cfg.Database
+		cfg.Database = "postgres"
+		conn, err := pq.NewConnectorConfig(cfg)
+		if err != nil {
+			return nil, nil, fmt.Errorf("zdb-pq.Connect: %w", err)
+		}
+		db := sql.OpenDB(conn)
+		defer db.Close()
+		_, err = db.ExecContext(ctx, fmt.Sprintf(`create database "%s"`, dbname))
+		if err != nil {
+			return nil, nil, fmt.Errorf("zdb-pq.Connect: %w", err)
+		}
+		return d.Connect(ctx, dsn, false) // Restart with create=false to avoid being stuck in a loop.
+	}
 	return db, nil, nil
 }
 
 // StartTest starts a new test.
 //
-// TODO: document.
+// Every test runs in its own schema inside the zdb_test database. All of this
+// is automatically created from opt.Files.
+//
+// The connect string can be customised via opt.Connect.
 func (driver) StartTest(t testing.TB, opt *drivers.TestOptions) context.Context {
 	t.Helper()
 
@@ -85,47 +81,52 @@ func (driver) StartTest(t testing.TB, opt *drivers.TestOptions) context.Context 
 		opt = &drivers.TestOptions{}
 	}
 
-	copt := zdb.ConnectOptions{Connect: "postgresql+", Create: true}
-	if opt != nil && opt.Connect != "" {
-		copt.Connect = opt.Connect
+	schema := fmt.Sprintf(`"zdb_test_%s_%s"`, time.Now().Format("20060102T15:04:05"), zcrypto.SecretString(4, ""))
+	cfg, err := pq.NewConfig(opt.Connect)
+	if err != nil {
+		t.Fatalf("zdb-pq.StartTest: parsing config %q: %s", opt.Connect, err)
 	}
-	if opt != nil && opt.Files != nil {
-		copt.Files = opt.Files
-	}
-	if opt != nil && opt.GoMigrations != nil {
-		copt.GoMigrations = opt.GoMigrations
+	cfg.Runtime["search_path"] = schema
+
+	conn, err := pq.NewConnectorConfig(cfg)
+	if err != nil {
+		t.Fatalf("zdb-pq.StartTest: creating connector %s: %s", schema, err)
 	}
 
-	db, err := zdb.Connect(context.Background(), copt)
+	db, err := zdb.FromSQLDB(sql.OpenDB(conn))
 	if err != nil {
-		t.Fatalf("pq.StartTest: connecting to %q: %s", copt.Connect, err)
+		t.Fatal(err)
 	}
 
-	// The first test will create the zdb_test database, and every test after
-	// that runs in its own schema.
-	schema := fmt.Sprintf(`"zdb_test_%s_%s"`, time.Now().Format("20060102T15:04:05.9999"),
-		zcrypto.SecretString(4, ""))
-	err = db.Exec(context.Background(), `create schema `+schema)
+	err = db.Exec(t.Context(), `create schema `+schema)
 	if err != nil {
-		t.Fatalf("pq.StartTest: creating schema %s: %s", schema, err)
+		t.Fatalf("zdb-pq.StartTest: creating schema %s: %s", schema, err)
 	}
-	err = db.Exec(context.Background(), "set search_path to "+schema)
-	if err != nil {
-		t.Fatalf("pq.StartTest: setting search_path to %s: %s", schema, err)
-	}
-
-	// No easy way to copy the public schema, so just run the create again.
-	// TODO: migrate, too?
-	if copt.Files != nil {
-		err = zdb.Create(db, copt.Files)
+	t.Cleanup(func() {
+		err := db.Exec(context.Background(), "drop schema "+schema+" cascade")
 		if err != nil {
-			t.Fatalf("pq.StartTest: creating database in schema %s: %s", schema, err)
+			t.Logf("dropping schema %s: %s", schema, err)
+		}
+		db.Close()
+	})
+
+	if opt.Files != nil {
+		dbFiles, err := fs.Sub(opt.Files, "db")
+		if err == nil {
+			if err := zdb.Create(db, dbFiles); err != nil {
+				t.Fatalf("zdb-pq.StartTest: creating tables: %s", err)
+			}
+		}
+		if zfs.Exists(opt.Files, "db/migrate") {
+			m, err := zdb.NewMigrate(db, opt.Files, opt.GoMigrations)
+			if err != nil {
+				t.Fatalf("zdb-pq.StartTest: creating migrator: %s", err)
+			}
+			if err := m.Run("all"); err != nil {
+				t.Fatalf("zdb-pq.StartTest: running migrations: %s", err)
+			}
 		}
 	}
 
-	t.Cleanup(func() {
-		db.Exec(context.Background(), "drop schema "+schema+" cascade")
-		db.Close()
-	})
-	return zdb.WithDB(context.Background(), db)
+	return zdb.WithDB(t.Context(), db)
 }

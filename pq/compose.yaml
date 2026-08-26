@@ -1,0 +1,12 @@
+services:
+  postgres:
+    image:       'postgres:18-alpine'
+    ports:       ['127.0.0.1:5432:5432']
+    #entrypoint:  '/init/entry.sh'
+    #volumes:     ['./testdata/postgres:/init', './testdata/ssl:/ssl']
+    shm_size:    '128mb'
+    healthcheck: {test: ['CMD-SHELL', 'pg_isready -U pq -d pq'], start_period: '30s', start_interval: '1s'}
+    environment:
+      'POSTGRES_DATABASE': 'pq'
+      'POSTGRES_USER':     'pq'
+      'POSTGRES_PASSWORD': 'unused'

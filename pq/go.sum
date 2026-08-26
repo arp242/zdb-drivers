@@ -1,6 +1,6 @@
 github.com/lib/pq v1.12.3 h1:tTWxr2YLKwIvK90ZXEw8GP7UFHtcbTtty8zsI+YjrfQ=
 github.com/lib/pq v1.12.3/go.mod h1:/p+8NSbOcwzAEI7wiMXFlgydTwcgTr3OSKMsD2BitpA=
-zgo.at/zdb v0.0.0-20260425145215-e580739daf43 h1:jYOTj8yUgmL9s5I1vw0RbwOb+sGXV/eJ2rW9jvLjDhU=
-zgo.at/zdb v0.0.0-20260425145215-e580739daf43/go.mod h1:lWKRy+R/LR4K3UTZmrxuk70Z73KSmhqaEitw3+60mQc=
-zgo.at/zstd v0.0.0-20260819203842-7567984d0ee9 h1:oaWpzu6FII4jAo/2lxvbAcVFcrJmxmOiGaKYeAikAdw=
-zgo.at/zstd v0.0.0-20260819203842-7567984d0ee9/go.mod h1:5vR5jYems3c7xfd8nHny5qMh67gbZwl8IockSF4pDSI=
+zgo.at/zdb v0.0.0-20260826150707-a31080ff76e0 h1:q/NpWB2UJp3e98VgDgz8zid9E1DtN8Tv8f3NsdeEcoA=
+zgo.at/zdb v0.0.0-20260826150707-a31080ff76e0/go.mod h1:ejRn05lvGQFnuiXzhen9pEaEO9AxJSDioWxFytrp5Bc=
+zgo.at/zstd v0.0.0-20260825170826-0bd1746f8b87 h1:fdFvijv2yv7hlFhtUU23zGcbMaizXLlI9E24NzM6dk0=
+zgo.at/zstd v0.0.0-20260825170826-0bd1746f8b87/go.mod h1:uly4ZYPz8zHIf1TteWbU34OxxV0CYunOaxVuhChtciQ=

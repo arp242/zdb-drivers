@@ -68,12 +68,15 @@ func DefaultHook(f func(*sqlite3.SQLiteConn) error) {
 
 type driver struct{}
 
-func (driver) Name() string    { return "sqlite3" }
+func (driver) Name() string    { return "go-sqlite3" }
 func (driver) Dialect() string { return "sqlite" }
 func (driver) Match(dialect, driver string) bool {
 	return dialect == "sqlite3" || strings.HasPrefix(driver, "sqlite3")
 }
 
+// StartTest starts a new test.
+//
+// Test run in a :memory: database.
 func (driver) StartTest(t testing.TB, opt *drivers.TestOptions) context.Context {
 	t.Helper()
 
@@ -96,7 +99,7 @@ func (driver) StartTest(t testing.TB, opt *drivers.TestOptions) context.Context 
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	t.Cleanup(func() { db.Close() })
+
 	return zdb.WithDB(context.Background(), db)
 }

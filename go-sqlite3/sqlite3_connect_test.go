@@ -45,8 +45,8 @@ func TestSQLiteHook(t *testing.T) {
 			t.Error(o)
 		}
 		info, _ := db.Info(ctx)
-		if info.DriverName != "sqlite3" {
-			t.Errorf("wrong driver name\nhave: %q\nwant: sqlite3", info.DriverName)
+		if info.DriverName != "go-sqlite3" {
+			t.Errorf("wrong driver name\nhave: %q\nwant: go-sqlite3", info.DriverName)
 		}
 		if db.SQLDialect() != zdb.DialectSQLite {
 			t.Errorf("wrong dialect: %q", db.SQLDialect())
@@ -76,8 +76,8 @@ func TestSQLiteHook(t *testing.T) {
 			t.Error(o)
 		}
 		info, _ := db.Info(ctx)
-		if info.DriverName != "sqlite3" {
-			t.Errorf("wrong driver name\nhave: %q\nwant: sqlite3", info.DriverName)
+		if info.DriverName != "go-sqlite3" {
+			t.Errorf("wrong driver name\nhave: %q\nwant: go-sqlite3", info.DriverName)
 		}
 		if db.SQLDialect() != zdb.DialectSQLite {
 			t.Errorf("wrong dialect: %q", db.SQLDialect())
@@ -108,8 +108,8 @@ func TestSQLiteHook(t *testing.T) {
 		}
 
 		info, _ := db.Info(ctx)
-		if info.DriverName != "sqlite3" {
-			t.Errorf("wrong driver name\nhave: %q\nwant: sqlite3", info.DriverName)
+		if info.DriverName != "go-sqlite3" {
+			t.Errorf("wrong driver name\nhave: %q\nwant: go-sqlite3", info.DriverName)
 		}
 		if db.SQLDialect() != zdb.DialectSQLite {
 			t.Errorf("wrong dialect: %q", db.SQLDialect())

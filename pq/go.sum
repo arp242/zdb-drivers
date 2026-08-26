@@ -1,6 +1,6 @@
 github.com/lib/pq v1.12.3 h1:tTWxr2YLKwIvK90ZXEw8GP7UFHtcbTtty8zsI+YjrfQ=
 github.com/lib/pq v1.12.3/go.mod h1:/p+8NSbOcwzAEI7wiMXFlgydTwcgTr3OSKMsD2BitpA=
-zgo.at/zdb v0.0.0-20260826150707-a31080ff76e0 h1:q/NpWB2UJp3e98VgDgz8zid9E1DtN8Tv8f3NsdeEcoA=
-zgo.at/zdb v0.0.0-20260826150707-a31080ff76e0/go.mod h1:ejRn05lvGQFnuiXzhen9pEaEO9AxJSDioWxFytrp5Bc=
+zgo.at/zdb v0.0.0-20260826151209-9dfc2b0454eb h1:LzJlCVPhilepbZULDBEO32KH3urSsh6s5Aq1NmGUngs=
+zgo.at/zdb v0.0.0-20260826151209-9dfc2b0454eb/go.mod h1:ejRn05lvGQFnuiXzhen9pEaEO9AxJSDioWxFytrp5Bc=
 zgo.at/zstd v0.0.0-20260825170826-0bd1746f8b87 h1:fdFvijv2yv7hlFhtUU23zGcbMaizXLlI9E24NzM6dk0=
 zgo.at/zstd v0.0.0-20260825170826-0bd1746f8b87/go.mod h1:uly4ZYPz8zHIf1TteWbU34OxxV0CYunOaxVuhChtciQ=

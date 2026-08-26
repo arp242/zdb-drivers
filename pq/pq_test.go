@@ -56,7 +56,7 @@ func TestConnectCreate(t *testing.T) {
 	d, ctx := driver{}, context.Background()
 
 	{ // Connect with create false → should error out.
-		db, _, err := d.Connect(ctx, "dbname="+dbname, false)
+		db, err := d.Connect(ctx, "dbname="+dbname, false)
 		if _, ok := errors.AsType[*drivers.NotExistError](err); !ok {
 			t.Fatalf("wrong error: %v", err)
 		}
@@ -66,7 +66,7 @@ func TestConnectCreate(t *testing.T) {
 	}
 
 	{ // connect with create → should create db
-		db, _, err := d.Connect(ctx, "dbname="+dbname, true)
+		db, err := d.Connect(ctx, "dbname="+dbname, true)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -75,7 +75,7 @@ func TestConnectCreate(t *testing.T) {
 			t.Fatal(err)
 		}
 		// Clean up our test database.
-		db, _, err = d.Connect(ctx, "dbname=postgres", false)
+		db, err = d.Connect(ctx, "dbname=postgres", false)
 		if err != nil {
 			t.Fatal(err)
 		}

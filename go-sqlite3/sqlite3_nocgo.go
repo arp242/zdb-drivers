@@ -15,5 +15,5 @@ import (
 func (driver) ErrUnique(err error) bool { return false }
 
 func (driver) Connect(ctx context.Context, connect string, create bool) (*sql.DB, any, error) {
-	return nil, nil, errors.New("go-sqlite3: not available: compiled with CGO_ENABLED=0")
+	return nil, errors.New("go-sqlite3: not available: compiled with CGO_ENABLED=0")
 }

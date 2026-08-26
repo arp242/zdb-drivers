@@ -29,40 +29,40 @@ type driver struct{}
 func (driver) Name() string             { return "pq" }
 func (driver) Dialect() string          { return "postgresql" }
 func (driver) ErrUnique(err error) bool { return pq.As(err, pqerror.UniqueViolation) != nil }
-func (d driver) Connect(ctx context.Context, dsn string, create bool) (*sql.DB, any, error) {
+func (d driver) Connect(ctx context.Context, dsn string, create bool) (*sql.DB, error) {
 	cfg, err := pq.NewConfig(dsn)
 	if err != nil {
-		return nil, nil, fmt.Errorf("zdb-pq.Connect: %w", err)
+		return nil, fmt.Errorf("zdb-pq.Connect: %w", err)
 	}
 	conn, err := pq.NewConnectorConfig(cfg)
 	if err != nil {
-		return nil, nil, fmt.Errorf("zdb-pq.Connect: %w", err)
+		return nil, fmt.Errorf("zdb-pq.Connect: %w", err)
 	}
 
 	db := sql.OpenDB(conn)
 	err = db.PingContext(ctx)
 	if err != nil && !create {
 		if cfg.Database != "" {
-			return nil, nil, &drivers.NotExistError{Driver: "postgres", DB: cfg.Database, Connect: dsn}
+			return nil, &drivers.NotExistError{Driver: "postgres", DB: cfg.Database, Connect: dsn}
 		}
-		return nil, nil, fmt.Errorf("zdb-pq.Connect: %w", err)
+		return nil, fmt.Errorf("zdb-pq.Connect: %w", err)
 	}
 	if err != nil {
 		dbname := cfg.Database
 		cfg.Database = "postgres"
 		conn, err := pq.NewConnectorConfig(cfg)
 		if err != nil {
-			return nil, nil, fmt.Errorf("zdb-pq.Connect: %w", err)
+			return nil, fmt.Errorf("zdb-pq.Connect: %w", err)
 		}
 		db := sql.OpenDB(conn)
 		defer db.Close()
 		_, err = db.ExecContext(ctx, fmt.Sprintf(`create database "%s"`, dbname))
 		if err != nil {
-			return nil, nil, fmt.Errorf("zdb-pq.Connect: %w", err)
+			return nil, fmt.Errorf("zdb-pq.Connect: %w", err)
 		}
 		return d.Connect(ctx, dsn, false) // Restart with create=false to avoid being stuck in a loop.
 	}
-	return db, nil, nil
+	return db, nil
 }
 
 // StartTest starts a new test.

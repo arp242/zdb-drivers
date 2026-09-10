@@ -41,6 +41,9 @@ func (d driver) Connect(ctx context.Context, dsn string, create bool) (*sql.DB, 
 
 	db := sql.OpenDB(conn)
 	err = db.PingContext(ctx)
+	if err != nil && pq.As(err, pqerror.InvalidCatalogName) == nil {
+		return nil, fmt.Errorf("zdb-pq.Connect: %w", err)
+	}
 	if err != nil && !create {
 		if cfg.Database != "" {
 			return nil, &drivers.NotExistError{Driver: "postgres", DB: cfg.Database, Connect: dsn}
@@ -48,15 +51,7 @@ func (d driver) Connect(ctx context.Context, dsn string, create bool) (*sql.DB, 
 		return nil, fmt.Errorf("zdb-pq.Connect: %w", err)
 	}
 	if err != nil {
-		dbname := cfg.Database
-		cfg.Database = "postgres"
-		conn, err := pq.NewConnectorConfig(cfg)
-		if err != nil {
-			return nil, fmt.Errorf("zdb-pq.Connect: %w", err)
-		}
-		db := sql.OpenDB(conn)
-		defer db.Close()
-		_, err = db.ExecContext(ctx, fmt.Sprintf(`create database "%s"`, dbname))
+		err := d.createDB(ctx, cfg)
 		if err != nil {
 			return nil, fmt.Errorf("zdb-pq.Connect: %w", err)
 		}
@@ -71,7 +66,7 @@ func (d driver) Connect(ctx context.Context, dsn string, create bool) (*sql.DB, 
 // is automatically created from opt.Files.
 //
 // The connect string can be customised via opt.Connect.
-func (driver) StartTest(t testing.TB, opt *drivers.TestOptions) context.Context {
+func (d driver) StartTest(t testing.TB, opt *drivers.TestOptions) context.Context {
 	t.Helper()
 
 	if e := os.Getenv("PGDATABASE"); e == "" {
@@ -92,10 +87,20 @@ func (driver) StartTest(t testing.TB, opt *drivers.TestOptions) context.Context 
 	if err != nil {
 		t.Fatalf("zdb-pq.StartTest: creating connector %s: %s", schema, err)
 	}
-
 	db, err := zdb.FromSQLDB(sql.OpenDB(conn))
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	err = db.Exec(t.Context(), ";")
+	if err != nil {
+		if pq.As(err, pqerror.InvalidCatalogName) == nil {
+			t.Fatalf("zdb-pq.StartTest: %s", err)
+		}
+		err := d.createDB(t.Context(), cfg)
+		if err != nil {
+			t.Fatalf("zdb-pq.StartTest: creating database: %s", err)
+		}
 	}
 
 	err = db.Exec(t.Context(), `create schema `+schema)
@@ -129,4 +134,17 @@ func (driver) StartTest(t testing.TB, opt *drivers.TestOptions) context.Context 
 	}
 
 	return zdb.WithDB(t.Context(), db)
+}
+
+func (d driver) createDB(ctx context.Context, cfg pq.Config) error {
+	dbname := cfg.Database
+	cfg.Database = "postgres"
+	conn, err := pq.NewConnectorConfig(cfg)
+	if err != nil {
+		return err
+	}
+	db := sql.OpenDB(conn)
+	defer db.Close()
+	_, err = db.ExecContext(ctx, fmt.Sprintf(`create database "%s"`, dbname))
+	return err
 }

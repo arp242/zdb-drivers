@@ -6,6 +6,7 @@ package pq
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -34,10 +35,10 @@ func (d driver) Connect(ctx context.Context, dsn string, create bool) (*sql.DB, 
 	if err != nil {
 		return nil, fmt.Errorf("zdb-pq.Connect: %w", err)
 	}
-	conn, err := pq.NewConnectorConfig(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("zdb-pq.Connect: %w", err)
+	if cfg.Database == "" {
+		return nil, errors.New("zdb-pq.Connect: no database in DSN or environment")
 	}
+	conn, _ := pq.NewConnectorConfig(cfg) // Never returns error.
 
 	db := sql.OpenDB(conn)
 	err = db.PingContext(ctx)
